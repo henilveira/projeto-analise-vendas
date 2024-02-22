@@ -1,0 +1,250 @@
+import pandas as pd
+from datetime import datetime
+from dateutil.parser import parse
+import re
+from unidecode import unidecode
+import matplotlib as pl
+
+import openpyxl
+from openpyxl import load_workbook, Workbook
+
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
+# Carregar planilha de relação
+planilha_relacao = load_workbook(r"C:\Users\henri\Documents\python_projects\RPA\RPA\src\Relacao_Produtos_e_Clientes_2024.xlsx")
+planilha = planilha_relacao.active
+
+#Colunas da planilha
+coluna_data_venda = "A"
+coluna_produto = "B"
+coluna_valor_venda = "C"
+coluna_regiao = "D"
+coluna_equipe_venda = "E"
+coluna_cliente = "F"
+coluna_metodo_pagamento = "G"
+coluna_desconto = "H"
+
+#Lista das colunas
+lista_data_venda = []
+datas_invalidas = []
+lista_produtos = []
+lista_valor_venda = []
+vendas_invalidas = []
+lista_regiao = []
+lista_equipe_venda = []
+equipes_invalidas = []
+lista_cliente = []
+lista_metodo_pagamento = []
+lista_desconto = []
+
+#MÉTODOS DE PAGAMENTO
+lista_transferencia_bancaria = []
+lista_cartao_credito = []
+lista_cartao_debito = []
+lista_dinheiro = []
+lista_cheque = []
+pagamento_invalido = []
+
+
+#PALVRAS CHAVE
+debito = ['deb','debito','cartao de debito']
+credito = ['cred','credito','cartao de credito']
+transferencia_bancaria = ['tran','trans','transferencia','ban','bancaria']
+dinheiro = ['din','cash','dinheiro']
+cheque = ['cheque','cheq']
+
+# Valida métodos de pagamentos para separar a frequencia com que são utilizadas
+def validar_metodo(celula, metodo_pagamento):
+    caracter_limpo = unidecode(celula).lower()    
+    for palavra in metodo_pagamento:
+        if palavra in caracter_limpo:
+            return True
+    return False
+
+# Função para validar datas
+def validar_data(data_str):
+    # Expressão regular para verificar se a entrada se parece com uma data
+    regex_data = r'\b\d{1,4}[-/]\d{1,2}[-/]\d{1,4}\b'
+
+    if re.match(regex_data, data_str):
+        return True
+    else:
+        return False
+
+def extrair_valor(num):
+    return float (num.replace("$", ""))
+
+# Função para validar se a venda é um número
+def validar_numero(num):
+    try:
+        float(num)
+        return True
+    except ValueError:
+        return False
+
+# Valida para ver se a equipe está dentro do padrão de escrita    
+def validar_equipe(equipe):
+    equipe = equipe.replace("Equipe ","")  
+    try:
+        int(equipe)
+        return True
+    except ValueError:
+        return False
+
+# Remove qualquer caracter que não seja um numero da string
+def remover_nao_numericos(string):
+    return re.sub(r'\D', '', string)
+        
+# Adicionar a lista as datas que estão validadas
+for linha in range(2, planilha.max_row + 1):
+    celulas_data_venda = str(planilha[f'{coluna_data_venda}{linha}'].value)
+    if validar_data(celulas_data_venda) == True:
+        lista_data_venda.append(celulas_data_venda)
+    else:
+        datas_invalidas.append(celulas_data_venda)
+        
+# Adicionar os produtos na lista de produtos        
+for linha in range(2, planilha.max_row + 1):
+    celulas_produto = str(planilha[f'{coluna_produto}{linha}'].value)
+    lista_produtos.append(celulas_produto)
+
+# Adicionar valor da venda na lista de valor de venda          
+for linha in range(2, planilha.max_row + 1):
+    celulas_valor_venda = (planilha[f'{coluna_valor_venda}{linha}'].value)
+    celulas_valor_venda = celulas_valor_venda.replace("$", "").replace(",", "")    
+    if validar_numero(celulas_valor_venda) == True:
+        celulas_valor_venda_num = float(celulas_valor_venda)
+        lista_valor_venda.append(celulas_valor_venda_num)
+    else:
+        vendas_invalidas.append(celulas_valor_venda)
+
+# Adicionar as regiões a lista de região
+for linha in range(2, planilha.max_row + 1):
+    celulas_regiao = (planilha[f'{coluna_regiao}{linha}'].value)
+    lista_regiao.append(celulas_regiao)
+
+# Adicionar as equipes válidas a lista e as invalidas
+for linha in range(2, planilha.max_row + 1):
+    celulas_equipe_venda = (planilha[f'{coluna_equipe_venda}{linha}'].value)
+    if validar_equipe(celulas_equipe_venda) == True:
+        lista_equipe_venda.append(celulas_equipe_venda)
+    else:
+        equipes_invalidas.append(celulas_equipe_venda)
+
+# Adicionar clientes a lista de clientes        
+for linha in range(2, planilha.max_row + 1):
+    celulas_cliente = (planilha[f'{coluna_cliente}{linha}'].value)
+    lista_cliente.append(celulas_cliente)
+
+# Verificar todos métodos de pagamento e adicionar cada um a sua própria lista    
+for linha in range(2, planilha.max_row + 1):
+    celulas_metodo_pagamento = (planilha[f'{coluna_metodo_pagamento}{linha}'].value)
+    if validar_metodo(celulas_metodo_pagamento,debito) == True:
+        lista_cartao_debito.append(celulas_metodo_pagamento)
+    elif validar_metodo(celulas_metodo_pagamento,credito) == True:
+        lista_cartao_credito.append(celulas_metodo_pagamento)
+    elif validar_metodo(celulas_metodo_pagamento,transferencia_bancaria) == True:
+        lista_transferencia_bancaria.append(celulas_metodo_pagamento)
+    elif validar_metodo(celulas_metodo_pagamento,dinheiro) == True:
+        lista_dinheiro.append(celulas_metodo_pagamento)
+    elif validar_metodo(celulas_metodo_pagamento,cheque) == True:
+        lista_cheque.append(celulas_metodo_pagamento)
+    else:
+        pagamento_invalido.append(celulas_cliente)
+        if len(pagamento_invalido) == 0:
+            pagamento_invalido.append("Nenhum pagamento inválido")        
+
+# Adicionar descontos a lista de descontos        
+for linha in range(2, planilha.max_row + 1):
+    celulas_desconto = str(planilha[f'{coluna_desconto}{linha}'].value)
+    celula_num = remover_nao_numericos(celulas_desconto)
+    if validar_numero(celula_num) == True:
+        lista_desconto.append(celula_num)
+
+# Criando DataFrames a partir das listas que foram atribuídas
+data_data_vendas = {
+    'Data da Venda': lista_data_venda
+}
+df_data_vendas = pd.DataFrame(data_data_vendas)
+
+data_produtos = {
+    'Produto': lista_produtos
+}
+df_produtos = pd.DataFrame(data_produtos)
+
+data_valor_venda = {
+    'Valor da Venda': lista_valor_venda
+}
+df_valor_venda = pd.DataFrame(data_valor_venda)
+
+data_regiao = {
+    'Região': lista_regiao
+}
+df_regiao = pd.DataFrame(data_regiao)
+
+data_equipe_venda = {
+    'Equipe de Venda': lista_equipe_venda
+}
+df_equipe_venda = pd.DataFrame(data_equipe_venda)
+
+data_cliente = {
+    'Cliente': lista_cliente
+}
+df_cliente = pd.DataFrame(data_cliente)
+
+#CONTAGEM DE MÉTODO DE PAGAMENTO
+qtd_transferencia_bancaria = len(lista_transferencia_bancaria)
+qtd_cartao_credito = len(lista_cartao_credito)
+qtd_cartao_debito = len(lista_cartao_debito)
+qtd_dinheiro = len(lista_dinheiro)
+qtd_cheque = len(lista_cheque)
+
+# Converter valores escalares em listas
+qtd_transferencia_bancaria = [qtd_transferencia_bancaria]
+qtd_cartao_credito = [qtd_cartao_credito]
+qtd_cartao_debito = [qtd_cartao_debito]
+qtd_dinheiro = [qtd_dinheiro]
+qtd_cheque = [qtd_cheque]
+
+#CONTAGEM DE MÉTODO DE PAGAMENTO
+qtd_regiao_norte = len(lista_transferencia_bancaria)
+qtd_regiao_ = len(lista_cartao_credito)
+qtd_cartao_debito = len(lista_cartao_debito)
+qtd_dinheiro = len(lista_dinheiro)
+qtd_cheque = len(lista_cheque)
+
+# Converter valores escalares em listas
+qtd_transferencia_bancaria = [qtd_transferencia_bancaria]
+qtd_cartao_credito = [qtd_cartao_credito]
+qtd_cartao_debito = [qtd_cartao_debito]
+qtd_dinheiro = [qtd_dinheiro]
+qtd_cheque = [qtd_cheque]
+
+# Criar o dicionário com os dados
+data_metodo_pagamento = {
+    'Transferencia Bancária': qtd_transferencia_bancaria,
+    'Cartão de Crédito': qtd_cartao_credito,
+    'Cartão de Débito': qtd_cartao_debito,
+    'Dinheiro': qtd_dinheiro,
+    'Cheque': qtd_cheque
+}
+df_metodo_pagamento = pd.DataFrame(data_metodo_pagamento)
+
+data_desconto = {
+    'Desconto': lista_desconto
+}
+df_desconto = pd.DataFrame(data_desconto)
+
+dfs = [df_produtos, df_valor_venda, df_regiao, df_equipe_venda, df_cliente, df_desconto]
+
+df_planilha = pd.concat(dfs, axis=1)  
+
+df_produtos_vendidos = df_planilha.groupby(['Produto']).sum()
+
+print(df_produtos_vendidos)
+
+for index, row in df_produtos_vendidos():
