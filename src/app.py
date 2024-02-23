@@ -3,7 +3,7 @@ from datetime import datetime
 from dateutil.parser import parse
 import re
 from unidecode import unidecode
-import matplotlib as pl
+import matplotlib.pyplot as plt
 
 import openpyxl
 from openpyxl import load_workbook, Workbook
@@ -243,11 +243,14 @@ dfs = [df_produtos, df_valor_venda, df_regiao, df_equipe_venda, df_cliente, df_d
 
 df_planilha = pd.concat(dfs, axis=1)  
 
-df_produtos_vendidos = df_planilha.groupby(['Produto']).count()
+df_regioes = df_planilha.groupby(['Região']).value_counts()
 
-df_fodase = df_planilha.groupby(['Produto']).sum()
+relatorio_regioes = df_regioes.loc[:, "Produto","Valor da Venda"]
 
-print(df_fodase)
-print(df_produtos_vendidos)
+print(relatorio_regioes)
 
-#for index, row in df_produtos_vendidos():
+relatorio_regioes.plot(kind='barh')
+
+#plt.show()
+
+
