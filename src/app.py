@@ -243,8 +243,11 @@ dfs = [df_produtos, df_valor_venda, df_regiao, df_equipe_venda, df_cliente, df_d
 
 df_planilha = pd.concat(dfs, axis=1)  
 
-df_produtos_vendidos = df_planilha.groupby(['Produto']).sum()
+df_produtos_vendidos = df_planilha.groupby(['Produto']).count()
 
+df_fodase = df_planilha.groupby(['Produto']).sum()
+
+print(df_fodase)
 print(df_produtos_vendidos)
 
-for index, row in df_produtos_vendidos():
+#for index, row in df_produtos_vendidos():
