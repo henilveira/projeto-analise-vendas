@@ -3,7 +3,8 @@ from datetime import datetime
 from dateutil.parser import parse
 import re
 from unidecode import unidecode
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as pl
+import seaborn as sns
 
 import openpyxl
 from openpyxl import load_workbook, Workbook
@@ -11,8 +12,7 @@ from openpyxl import load_workbook, Workbook
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
+from email.mime.image import MIMEImage
 
 # Carregar planilha de relação
 planilha_relacao = load_workbook(r"C:\Users\henri\Documents\python_projects\RPA\RPA\src\Relacao_Produtos_e_Clientes_2024.xlsx")
@@ -41,21 +41,46 @@ lista_cliente = []
 lista_metodo_pagamento = []
 lista_desconto = []
 
-#MÉTODOS DE PAGAMENTO
-lista_transferencia_bancaria = []
-lista_cartao_credito = []
-lista_cartao_debito = []
-lista_dinheiro = []
-lista_cheque = []
-pagamento_invalido = []
-
-
 #PALVRAS CHAVE
 debito = ['deb','debito','cartao de debito']
 credito = ['cred','credito','cartao de credito']
 transferencia_bancaria = ['tran','trans','transferencia','ban','bancaria']
 dinheiro = ['din','cash','dinheiro']
 cheque = ['cheque','cheq']
+
+def salvar_grafico_e_enviar_email(fig, nome_arquivo, destinatario):
+    # Salvar o gráfico como uma imagem
+    fig.savefig(nome_arquivo)
+    
+    # Configurações de e-mail
+    remetente = 'henriqueataide.dev@gmail.com'  # Insira o e-mail remetente
+    senha = 'hsa$1602'  # Insira a senha do e-mail remetente
+    assunto = 'Gráfico'
+    corpo = 'Segue em anexo o gráfico solicitado.'
+
+    # Configuração do e-mail
+    msg = MIMEMultipart()
+    msg['De'] = remetente
+    msg['Para'] = destinatario
+    msg['Assunto'] = assunto
+
+    # Corpo do e-mail
+    msg.attach(MIMEText(corpo, 'plain'))
+
+    # Anexar gráfico
+    with open(nome_arquivo, 'rb') as anexo:
+        imagem = MIMEImage(anexo.read())
+        imagem.add_header('Content-Disposition', 'attachment', filename=nome_arquivo)
+        msg.attach(imagem)
+
+# Função para criar gráfico
+def grafico(x,y,hue,data,title,xlabel,ylabel):
+    pl.figure(figsize=(20, 6))
+    sns.barplot(x=x, y=y, hue=hue, data=data, ci=None, orient='x')
+    pl.title(title)
+    pl.xlabel(xlabel)
+    pl.ylabel(ylabel)
+    pl.show()
 
 # Valida métodos de pagamentos para separar a frequencia com que são utilizadas
 def validar_metodo(celula, metodo_pagamento):
@@ -140,23 +165,34 @@ for linha in range(2, planilha.max_row + 1):
     celulas_cliente = (planilha[f'{coluna_cliente}{linha}'].value)
     lista_cliente.append(celulas_cliente)
 
-# Verificar todos métodos de pagamento e adicionar cada um a sua própria lista    
+
 for linha in range(2, planilha.max_row + 1):
     celulas_metodo_pagamento = (planilha[f'{coluna_metodo_pagamento}{linha}'].value)
-    if validar_metodo(celulas_metodo_pagamento,debito) == True:
-        lista_cartao_debito.append(celulas_metodo_pagamento)
-    elif validar_metodo(celulas_metodo_pagamento,credito) == True:
-        lista_cartao_credito.append(celulas_metodo_pagamento)
-    elif validar_metodo(celulas_metodo_pagamento,transferencia_bancaria) == True:
-        lista_transferencia_bancaria.append(celulas_metodo_pagamento)
-    elif validar_metodo(celulas_metodo_pagamento,dinheiro) == True:
-        lista_dinheiro.append(celulas_metodo_pagamento)
-    elif validar_metodo(celulas_metodo_pagamento,cheque) == True:
-        lista_cheque.append(celulas_metodo_pagamento)
-    else:
-        pagamento_invalido.append(celulas_cliente)
-        if len(pagamento_invalido) == 0:
-            pagamento_invalido.append("Nenhum pagamento inválido")        
+    metodo_pagamento_padronizado = unidecode(celulas_metodo_pagamento).lower()
+    for debito_chave in debito:
+        if debito_chave in metodo_pagamento_padronizado:
+            metodo_pagamento_padronizado = "Cartão de Débito"
+            break
+    for credito_chave in credito:
+        if credito_chave in metodo_pagamento_padronizado:
+            metodo_pagamento_padronizado = "Cartão de Crédito"
+            break
+    for transferencia_chave in transferencia_bancaria:
+        if transferencia_chave in metodo_pagamento_padronizado:
+            metodo_pagamento_padronizado = "Transferência Bancária"
+            break
+    for dinheiro_chave in dinheiro:
+        if dinheiro_chave in metodo_pagamento_padronizado:
+            metodo_pagamento_padronizado = "Dinheiro"
+            break
+    for cheque_chave in cheque:
+        if cheque_chave in metodo_pagamento_padronizado:
+            metodo_pagamento_padronizado = "Cheque"
+            break
+        
+    lista_metodo_pagamento.append(metodo_pagamento_padronizado)
+    
+print(lista_metodo_pagamento)
 
 # Adicionar descontos a lista de descontos        
 for linha in range(2, planilha.max_row + 1):
@@ -196,41 +232,9 @@ data_cliente = {
 }
 df_cliente = pd.DataFrame(data_cliente)
 
-#CONTAGEM DE MÉTODO DE PAGAMENTO
-qtd_transferencia_bancaria = len(lista_transferencia_bancaria)
-qtd_cartao_credito = len(lista_cartao_credito)
-qtd_cartao_debito = len(lista_cartao_debito)
-qtd_dinheiro = len(lista_dinheiro)
-qtd_cheque = len(lista_cheque)
-
-# Converter valores escalares em listas
-qtd_transferencia_bancaria = [qtd_transferencia_bancaria]
-qtd_cartao_credito = [qtd_cartao_credito]
-qtd_cartao_debito = [qtd_cartao_debito]
-qtd_dinheiro = [qtd_dinheiro]
-qtd_cheque = [qtd_cheque]
-
-#CONTAGEM DE MÉTODO DE PAGAMENTO
-qtd_regiao_norte = len(lista_transferencia_bancaria)
-qtd_regiao_ = len(lista_cartao_credito)
-qtd_cartao_debito = len(lista_cartao_debito)
-qtd_dinheiro = len(lista_dinheiro)
-qtd_cheque = len(lista_cheque)
-
-# Converter valores escalares em listas
-qtd_transferencia_bancaria = [qtd_transferencia_bancaria]
-qtd_cartao_credito = [qtd_cartao_credito]
-qtd_cartao_debito = [qtd_cartao_debito]
-qtd_dinheiro = [qtd_dinheiro]
-qtd_cheque = [qtd_cheque]
-
 # Criar o dicionário com os dados
 data_metodo_pagamento = {
-    'Transferencia Bancária': qtd_transferencia_bancaria,
-    'Cartão de Crédito': qtd_cartao_credito,
-    'Cartão de Débito': qtd_cartao_debito,
-    'Dinheiro': qtd_dinheiro,
-    'Cheque': qtd_cheque
+    'Método de Pagamento': lista_metodo_pagamento,
 }
 df_metodo_pagamento = pd.DataFrame(data_metodo_pagamento)
 
@@ -239,18 +243,27 @@ data_desconto = {
 }
 df_desconto = pd.DataFrame(data_desconto)
 
-dfs = [df_produtos, df_valor_venda, df_regiao, df_equipe_venda, df_cliente, df_desconto]
-
+dfs = [df_produtos, df_valor_venda, df_regiao, df_equipe_venda, df_cliente, df_metodo_pagamento, df_desconto]
 df_planilha = pd.concat(dfs, axis=1)  
 
-df_regioes = df_planilha.groupby(['Região']).value_counts()
+# Data frame focado em produtos vendidos
+df_produtos_vendidos = df_planilha.groupby(['Produto']).value_counts()
+df_produtos_vendidos = df_produtos_vendidos.reset_index()
+grafico(x='Produto', y='Valor da Venda', hue='Região', data=df_produtos_vendidos,
+        title='Distribuição do Valor de Venda por Produto e Região', xlabel='Produto', ylabel='Valor da Venda')
 
-relatorio_regioes = df_regioes.loc[:, "Produto","Valor da Venda"]
+# Data frame focado nas equipes que mais venderam tais produtos por região
+df_equipes_de_venda = df_planilha.groupby(['Equipe de Venda']).value_counts()
+df_equipes_de_venda = df_equipes_de_venda.reset_index()
+grafico(x='Equipe de Venda', y='Valor da Venda', hue='Produto', data=df_equipes_de_venda,
+        title='Equipes que mais venderam por Produto', xlabel='Equipes', ylabel='Valor da Venda')
 
-print(relatorio_regioes)
+# Data frame focado nos metodos de pagamento mais utilizado pelos clientes
+df_metodo_pagamento_clientes = [df_produtos, df_cliente, df_metodo_pagamento]
+df_metodo_pagamento_clientes = pd.concat(df_metodo_pagamento_clientes, axis=1)
 
-relatorio_regioes.plot(kind='barh')
+df_metodo_pagamento_clientes = df_planilha.groupby(['Cliente']).value_counts()
+df_metodo_pagamento_clientes = df_metodo_pagamento_clientes.reset_index()
 
-#plt.show()
-
-
+grafico(x='Cliente', y='Desconto', hue='Método de Pagamento', data=df_metodo_pagamento_clientes,
+        title='Métodos de pagamento mais utilizados pelos clientes e descontos aplicados', xlabel='Cliente', ylabel='Desconto')
