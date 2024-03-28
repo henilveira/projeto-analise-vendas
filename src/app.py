@@ -53,8 +53,8 @@ def salvar_grafico_e_enviar_email(fig, nome_arquivo, destinatario):
     fig.savefig(nome_arquivo)
     
     # Configurações de e-mail
-    remetente = 'henriqueataide.dev@gmail.com'  # Insira o e-mail remetente
-    senha = 'hsa$1602'  # Insira a senha do e-mail remetente
+    remetente = ''  # Insira o e-mail remetente
+    senha = ''  # Insira a senha do e-mail remetente
     assunto = 'Gráfico'
     corpo = 'Segue em anexo o gráfico solicitado.'
 
