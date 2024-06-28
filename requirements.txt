@@ -1,0 +1,6 @@
+pandas
+python-dateutil
+unidecode
+matplotlib
+seaborn
+openpyxl
