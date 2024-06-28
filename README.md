@@ -27,9 +27,20 @@ Este projeto consiste em ler uma planilha de vendas de produtos, lidar com dados
     git clone https://github.com/imrickss/projeto-analise-vendas.git
     ```
 
-2. Instale as dependências:
+2. Navegue até o diretório do projeto:
     ```sh
-    pip install pandas dateutil unidecode matplotlib seaborn openpyxl smtplib
+    cd projeto-analise-vendas
+    ```
+
+3. Crie e ative um ambiente virtual:
+    ```sh
+    python -m venv venv
+    source venv/bin/activate   # No Windows, use `venv\Scripts\activate`
+    ```
+
+4. Instale as dependências:
+    ```sh
+    pip install -r requirements.txt
     ```
 
 ## Como Usar
@@ -38,7 +49,7 @@ Este projeto consiste em ler uma planilha de vendas de produtos, lidar com dados
 
 2. Execute o script principal:
     ```sh
-    python script_analise_vendas.py
+    python app.py
     ```
 
 3. O script irá ler a planilha, tratar os dados e gerar relatórios em formato de gráfico.
@@ -47,5 +58,4 @@ Este projeto consiste em ler uma planilha de vendas de produtos, lidar com dados
 
 ## Estrutura do Projeto
 
-- `script_analise_vendas.py`: Script principal que contém toda a lógica de leitura, tratamento de dados e geração de relatórios.
-
+- `script_an
